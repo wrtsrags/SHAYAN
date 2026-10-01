@@ -145,10 +145,12 @@ Railway Project
 
 - **MySQL داخل کانتینر WordPress نصب نشده** — کاملاً جدا و مدیریت‌شده توسط Railway است.
 - از image رسمی `wordpress:latest` استفاده شده؛ نیازی به نصب دستی Apache یا PHP نیست.
+- **رفع خطای MPM:** Dockerfile شامل دستورات لازم برای غیرفعال‌کردن `mpm_event` / `mpm_worker` و فعال‌کردن فقط `mpm_prefork` است (مشکل رایج روی Railway).
 - Volume روی `/var/www/html` ضروری است تا داده‌ها بعد از Deploy از بین نروند.
 - هیچ Secret یا Password واقعی داخل فایل‌های پروژه قرار نگرفته است.
 - برای به‌روزرسانی WordPress Core، افزونه‌ها و قالب‌ها از داشبورد خود WordPress استفاده کنید (Volume آن‌ها را نگه می‌دارد).
 - اگر می‌خواهید نسخه خاصی از WordPress را قفل کنید، در Dockerfile به‌جای `latest` از تگ مشخص استفاده کنید (مثلاً `wordpress:6.7-php8.2-apache`).
+- **مهم:** در Settings سرویس WordPress، فیلد **Custom Start Command** را خالی بگذارید تا CMD داخل Dockerfile اجرا شود. اگر Start Command سفارشی دارید، آن را پاک کنید یا با دستور زیر جایگزین کنید.
 
 ---
 
@@ -156,10 +158,21 @@ Railway Project
 
 | مشکل                        | راه‌حل پیشنهادی                                      |
 |-----------------------------|-----------------------------------------------------|
+| `More than one MPM loaded`  | Dockerfile اصلاح‌شده را push کنید و Redeploy کنید. Custom Start Command را خالی بگذارید |
 | خطای اتصال به دیتابیس       | نام سرویس MySQL در Reference Variables را چک کنید   |
 | صفحه سفید بعد از Deploy     | Logs را ببینید + Volume را بررسی کنید               |
 | فایل‌ها بعد از Redeploy پاک می‌شوند | Volume باید روی `/var/www/html` mount شده باشد     |
 | دامنه باز نمی‌شود           | Generate Domain را انجام دهید و Deploy را چک کنید   |
+
+### اگر هنوز خطای MPM می‌بینید
+
+در Railway → سرویس WordPress → **Settings** → **Deploy** → فیلد **Custom Start Command** را کاملاً خالی کنید (تا CMD داخل Dockerfile استفاده شود).
+
+یا این دستور را به‌عنوان Start Command بگذارید:
+
+```
+bash -c "a2dismod mpm_event mpm_worker 2>/dev/null || true; rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* 2>/dev/null || true; a2enmod mpm_prefork 2>/dev/null || true; exec docker-entrypoint.sh apache2-foreground"
+```
 
 ---
 
